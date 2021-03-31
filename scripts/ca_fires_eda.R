@@ -5,7 +5,7 @@ library(leaflet)
 library(here)
 
 ## Read data
-fires <- data.table::fread(here("data", "ca_fires.csv")) %>% st_as_sf(coords = c("lat", "long"), crs = 4326)
+fires <- data.table::fread(here("data", "ca_fires_lc.csv")) %>% st_as_sf(coords = c("lat", "long"), crs = 4326)
 
 # pal <- colorNumeric(
 #   palette = "Reds",
