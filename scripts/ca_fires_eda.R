@@ -13,7 +13,7 @@ fires <- data.table::fread(here("data", "ca_fires.csv")) %>% st_as_sf(coords = c
 
 ## Filter to avoid oversaturated viz
 map_data <- fires %>%
-  filter(!FIRE_SIZE_CLASS %in% c("A", "B")) %>%
+  filter(!FIRE_SIZE_CLASS %in% c("A", "B"), lag == 1) %>%
   filter(DISCOVERY_DATE2 != CONT_DATE2) %>%
   #mutate(COMPLEX_NAME = ifelse(is.na(COMPLEX_NAME), "", COMPLEX_NAME)) %>%
   mutate(FIRE_RADIUS = sqrt((FIRE_SIZE * 4047 / pi)))

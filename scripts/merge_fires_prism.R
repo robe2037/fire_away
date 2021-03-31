@@ -4,11 +4,11 @@ library(leaflet)
 library(RSQLite)
 library(sf)
 library(here)
+library(lubridate)
 
 ## Function to attach weather data to fires data for a particular state
 join_fires_weather <- function(state_abb, 
-                               temp_vars = c("daily_tmax", "daily_tmin", "daily_tmean", 
-                                             "daily_ppt", "daily_vpdmax", "daily_vpdmin"), 
+                               temp_vars = c("daily_tmax", "daily_tmin", "daily_tmean", "daily_ppt", "daily_vpdmax", "daily_vpdmin"), 
                                lags = seq(1,31)) {
   
   ## Get state abbreviations for FIPS codes
@@ -26,7 +26,7 @@ join_fires_weather <- function(state_abb,
     filter(state == state_abb) 
   
   ## Create DB connection
-  conn <- dbConnect(RSQLite::SQLite(), here("data", "fires", "FPA_FOD_20170508.sqlite"))
+  conn <- dbConnect(RSQLite::SQLite(), here("data", "FPA_FOD_20170508.sqlite"))
   
   ## Pull fires table from DB
   fires <- tbl(conn, "Fires") %>% collect() #%>% filter(OBJECTID == 275)
@@ -76,12 +76,34 @@ join_fires_weather <- function(state_abb,
 
 ## Get data for CA and write
 
-# ca_fires <- join_fires_weather(state_abb = "CA")
-# 
-# t <- ca_fires %>%
-#   mutate(lat = unlist(map(ca_fires$geometry,1)),
-#          long = unlist(map(ca_fires$geometry,2)))
-# 
-# st_geometry(t) <- NULL
-#
-# write_csv(t, here("data", "ca_fires.csv"))
+ca_fires <- join_fires_weather(state_abb = "CA")
+
+ca_fires_sf <- ca_fires %>% select(OBJECTID)
+ca_fires$geometry <- NULL
+
+pivot_fun <- function(data, temp_var) {
+  
+  temp_var_lag <- paste0(temp_var, "_lag_")
+  
+  data %>% select(OBJECTID, matches(temp_var_lag)) %>%
+    pivot_longer(cols = -OBJECTID, names_prefix = temp_var_lag, values_to = temp_var, names_to = "lag")
+  
+}
+
+temp_vars <- c("daily_tmax", "daily_tmin", "daily_tmean", "daily_ppt", "daily_vpdmax", "daily_vpdmin")
+
+ca_fires_long <- map(temp_vars, ~pivot_fun(ca_fires, .x))
+
+ca_fires_joined <- reduce(long, ~full_join(.x, .y))
+
+ca_fires_joined_sf <- left_join(ca_fires_joined, ca_fires_sf)
+
+t <- ca_fires_joined_sf %>%
+  mutate(lat = unlist(map(ca_fires_joined_sf$geometry, 1)),
+         long = unlist(map(ca_fires_joined_sf$geometry, 2)))
+
+t$geometry <- NULL
+
+out_df <- left_join(ca_fires %>% select(-matches("daily")), t)
+
+#write_csv(out_df, here("data", "ca_fires.csv"))
