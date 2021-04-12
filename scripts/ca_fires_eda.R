@@ -39,5 +39,3 @@ for(year in years) {
 fire_map <- map %>% addLayersControl(baseGroups = as.character(years))
 
 fire_map
-
-# Github, amiright folks?
